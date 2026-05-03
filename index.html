@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沖繩520 - 行程規劃</title>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --secondary: #0ea5e9;
+            --dark: #1e293b;
+            --light: #e0f2fe; /* 淡海藍色背景 */
+            --accent: #f59e0b;
+            --white: #ffffff;
+            --gray: #e2e8f0;
+            --active: #0284c7;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--dark);
+            background-color: var(--light);
+            line-height: 1.6;
+        }
+
+        /* =========================================
+           1. 開場動畫層 (SplashScreen)
+           功能：全螢幕展示指定圖片，填滿畫面。
+           ========================================= */
+        #splashScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 1s ease; /* 淡出動畫效果 */
+        }
+        #splashScreen img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        /* CSS 類：用於觸發淡出 */
+        .fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* =========================================
+           2. 網頁標頭 (Header)
+           功能：使用指定圖片作為背景，並淡化處理。
+           ========================================= */
+        header {
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+            position: relative;
+            background-image: url('https://img.activityjapan.com/wi/okinawa-hidden-spot_thumb.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        
+        /* 製作「淡化遮罩」 */
+        header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.3); /* 半透明白色遮罩 */
+            z-index: 1;
+        }
+        
+        /* 確保 Header 內的文字在遮罩上方 */
+        header h1, header p {
+            position: relative;
+            z-index: 2;
+            margin: 0 0 10px 0;
+            color: var(--dark); 
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+        }
+        header h1 {
+            font-size: 2.8rem;
+        }
+
+        /* =========================================
+           3. 通用佈局與元件
+           ========================================= */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        .section-title::after {
+            content: '';
+            display: block;
+            width: 50px;
+            height: 3px;
+            background: var(--accent);
+            margin: 10px auto 0;
+            border-radius: 2px;
+        }
+
+        /* 地圖區塊 */
+        .map-container {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .map-wrapper {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 比例 */
+            height: 0;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+        .map-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        /* 總行程預算與花費區塊 */
+        .summary-card {
+            background: var(--white);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            margin-bottom: 50px;
+            overflow-x: auto;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .summary-table th, .summary-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--gray);
+            text-align: center;
+        }
+        .summary-table th {
+            background: #f1f5f9;
+            color: var(--primary);
+        }
+        .summary-table tfoot {
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        /* 行程卡片格狀佈局 (6 宮格) */
+        .itinerary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        /* 行程卡片基礎樣式 */
+        .day-card {
+            background: var(--white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        /* 卡片懸停特效 */
+        .day-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        }
+        
+        /* 卡片圖片區域 */
+        .day-img-wrapper {
+            height: 200px;
+            position: relative;
+            overflow: hidden;
+        }
+        .day-img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        /* Day 標籤 */
+        .day-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: var(--accent);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            z-index: 2;
+        }
+        
+        /* 卡片文字區域 */
+        .card-content {
+            padding: 20px;
+        }
+        .card-content h3 {
+            margin-top: 0;
+            color: var(--primary);
+            font-size: 1.3rem;
+        }
+        
+        /* 通用按鈕樣式 */
+        .action-btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .action-btn:hover {
+            background: var(--secondary);
+        }
+
+        /* =========================================
+           4. 詳細行程分頁 (PageView)
+           ========================================= */
+        .page-view {
+            display: none; /* 預設隱藏所有分頁 */
+        }
+        
+        /* 頂部快速導覽列 */
+        .day-nav {
+            background: var(--white);
+            padding: 15px 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .nav-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        /* 導覽按鈕 */
+        .nav-btn {
+            background: var(--gray);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            color: var(--dark);
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+        .nav-btn:hover, .nav-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        /* 返回首頁按鈕 */
+        .home-nav-btn {
+            background: #f1f5f9;
+            border: 1px solid var(--gray);
+            color: var(--primary);
+        }
+
+        /* =========================================
+           5. 時間軸設計 (類星宇航空風格)
+           ========================================= */
+        .timeline-container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            padding-left: 30px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        /* 時間軸節點 */
+        .timeline-node {
+            position: relative;
+            margin-bottom: 40px;
+            cursor: pointer;
+        }
+        
+        /* 節點圓點 */
+        .timeline-node::before {
+            content: '';
+            position: absolute;
+            left: -40px;
+            top: 5px;
+            width: 16px;
+            height: 16px;
+            background: var(--accent);
+            border-radius: 50%;
+            border: 3px solid var(--white);
+            transition: background 0.2s, transform 0.2s;
+            z-index: 2;
+        }
+        .timeline-node:hover::before {
+            background: var(--primary);
+            transform: scale(1.2);
+        }
+        
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .node-time {
+            font-size: 0.9rem;
+            color: var(--accent);
+            font-weight: bold;
+        }
+        .node-title {
+            font-size: 1.3rem;
+            margin: 0 0 5px 0;
+            color: var(--primary);
+        }
+        
+        .detail-panel {
+            background: var(--white);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-top: 10px;
+            border-left: 5px solid var(--secondary);
+            display: none;
+        }
+        .detail-panel img {
+            width: 100%;
+            max-height: 250px;
+            object-fit: contain; /* 改為 contain 避免裁切 */
+            background-color: #f8fafc; /* 可選：加上淡淡的背景色讓留白處更好看 */
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            background: var(--dark);
+            color: white;
+            margin-top: 60px;
+        }
+        .image-gallery {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            margin-top: 10px;
+            padding-bottom: 5px;
+        }
+
+        .image-gallery img {
+            width: 48%; /* 讓兩張圖片各佔容器的一半寬度 */
+            height: 180px; /* 強制設定統一的高度 */
+            object-fit: contain; /* 讓圖片填滿整個設定好的區塊（若想完整呈現不裁切可改為 contain） */
+            background-color: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid var(--gray);
+            flex-shrink: 0; /* 防止圖片被擠壓變形 */
+        }
+        .detail-text {
+            background-color: var(--white);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px; /* 與下方圖片容器的間距 */
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* 加上柔和陰影增加立體感 */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="splashScreen">
+        <img src="https://www.newamazing.com.tw/eWeb_newamazing/IMGDB/000206/000207/000212/00005595.JPG" alt="歡迎來到沖繩">
+    </div>
+
+    <div id="homeView">
+        <header>
+            <h1>沖繩五日遊</h1>
+            <p>與藍天碧海的浪漫約會</p>
+        </header>
+
+        <div class="container">
+            <h2 class="section-title">沖繩地理位置</h2>
+            <div class="map-container">
+                <p><strong>沖繩地圖</strong></p>
+                <div class="map-wrapper">
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d428939.81432420455!2d127.64373679805903!3d26.495085448378546!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x34e5114dc090e5fb%3A0x8035ed8483b879c7!2z5rqa576p!5e0!3m2!1szh-TW!2stw!4v1711800000000" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+
+            <h2 class="section-title">行程概覽與預算</h2>
+            <div class="summary-card">
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>重點行程</th>
+                            <th>預計花費 (台幣)</th>
+                            <th>交通方式</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Day 0 (5/14)</td>
+                            <td>機場飯店過夜</td>
+                            <td>2928</td>
+                            <td>捷運/機場接送</td>
+                        </tr>
+                        <tr>
+                            <td>Day 1 (5/15)</td>
+                            <td>首里城漫步</td>
+                            <td>280</td>
+                            <td>單軌電車</td>
+                        </tr>
+                        <tr>
+                            <td>Day 2 (5/16)</td>
+                            <td>沖繩北部一日遊</td>
+                            <td>1952</td>
+                            <td>KLOOK遊覽車</td>
+                        </tr>
+                        <tr>
+                            <td>Day 3 (5/17)</td>
+                            <td>那霸市區散策</td>
+                            <td>1200</td>
+                            <td>觀光巴士</td>
+                        </tr>
+                        <tr>
+                            <td>Day 4 (5/18)</td>
+                            <td>國際通採買</td>
+                            <td>120</td>
+                            <td>公車/單軌電車</td>
+                        </tr>
+                        <tr>
+                            <td>Day 5 (5/19)</td>
+                            <td>登機賦歸</td>
+                            <td>65</td>
+                            <td>單軌電車</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" style="text-align:right"><strong>總計花費：</strong></td>
+                            <td colspan="2"><strong>6545(僅含門票與交通成本)</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <h2 class="section-title">行程規劃</h2>
+            <div class="itinerary-grid">
+                <div class="day-card">
+                    <div class="day-img-wrapper">
+                        <span class="day-badge">Day 0</span>
+                        <img src="https://cf.bstatic.com/xdata/images/hotel/max500/832448195.jpg?k=08555ce0c1320d3947691346e283bf2c067007880805aa63d0d01ec174488520&o=&hp=1" alt="機場飯店過夜">
+                    </div>
+                    <div class="card-content">
+                        <h3>Day 0：機場飯店過夜</h3>
+                        <p>入住桃園機場凱悅酒店，為隔天一早的沖繩航班做好準備，養精蓄銳。</p>
+                        <button class="action-btn" onclick="switchView('day0View')">查看詳細行程 ➔</button>
+                    </div>
+                </div>
+
+                <div class="day-card">
+                    <div class="day-img-wrapper">
+                        <span class="day-badge">Day 1</span>
+                        <img src="https://ohh.okinawa/wpdir/wp-content/uploads/2018/10/457c5f806919ef287fabdfe3effaa8b1.jpg" alt="那霸市區與國際通">
+                    </div>
+                    <div class="card-content">
+                        <h3>Day 1：抵達沖繩與首里城參訪</h3>
+                        <p>抵達那霸機場，搭車前往飯店。下午造訪首里城，晚上屋台街。</p>
+                        <button class="action-btn" onclick="switchView('day1View')">查看詳細行程 ➔</button>
+                    </div>
+                </div>
+
+                <div class="day-card">
+                    <div class="day-img-wrapper">
+                        <span class="day-badge">Day 2</span>
+                        <img src="https://ohh.okinawa/wpdir/wp-content/uploads/2019/10/9cbf0eaca7edd93c81ba655a32da5848.jpg" alt="美麗海水族館">
+                    </div>
+                    <div class="card-content">
+                        <h3>Day 2：沖繩北部一日遊</h3>
+                        <p>造訪萬座毛絕景與古宇利島，在美麗海觀看海豚秀，下午在充滿美式風情的美國村逛街、看落日。</p>
+                        <button class="action-btn" onclick="switchView('day2View')">查看詳細行程 ➔</button>
+                    </div>
+                </div>
+
+                <div class="day-card">
+                    <div class="day-img-wrapper">
+                        <span class="day-badge">Day 3</span>
+                        <img src="https://kariyushi-aquarium.com/uploads/index_img_detail_kawauso.png" alt="萬座毛與美國村">
+                    </div>
+                    <div class="card-content">
+                        <h3>Day 3：那霸市區漫遊</h3>
+                        <p>到訪ASHIBINAA Outlet、IIAS百貨，體驗DMM Kariyushi水族館與瀨長島日落。</p>
+                        <button class="action-btn" onclick="switchView('day3View')">查看詳細行程 ➔</button>
+                    </div>
+                </div>
+
+                <div class="day-card">
+                    <div class="day-img-wrapper">
+                        <span class="day-badge">Day 4</span>
+                        <img src="https://d1grca2t3zpuug.cloudfront.net/2024/01/sana-featuredfb.jpg" alt="Parco city">
+                    </div>
+                    <div class="card-content">
+                        <h3>Day 4：吃吃喝喝買買買伴手禮</h3>
+                        <p>前往PARCO CITY與國際通周遭採買伴手禮。</p>
+                        <button class="action-btn" onclick="switchView('day4View')">查看詳細行程 ➔</button>
+                    </div>
+                </div>
+
+                <div class="day-card">
+                    <div class="day-img-wrapper">
+                        <span class="day-badge">Day 5</span>
+                        <img src="https://hk.wamazing.com/media/wp-content/uploads/sites/5/2024/07/nahaairporttaxfree_pixta_27003616_M.jpg.webp" alt="瀨長島與賦歸">
+                    </div>
+                    <div class="card-content">
+                        <h3>Day 5：登機賦歸</h3>
+                        <p>最後採買，悠哉前往搭機，回台整理。</p>
+                        <button class="action-btn" onclick="switchView('day5View')">查看詳細行程 ➔</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="day0View" class="page-view">
+        <header>
+            <h1>Day 0 詳細行程</h1>
+            <p>5月14日 (四) - 桃園機場凱悅酒店過夜</p>
+        </header>
+        <div class="container">
+            <div class="day-nav">
+                <button class="nav-btn home-nav-btn" onclick="switchView('homeView')">🔙 返回首頁</button>
+                <div class="nav-group">
+                    <button class="nav-btn active" onclick="switchView('day0View')">Day 0</button>
+                    <button class="nav-btn" onclick="switchView('day1View')">Day 1</button>
+                    <button class="nav-btn" onclick="switchView('day2View')">Day 2</button>
+                    <button class="nav-btn" onclick="switchView('day3View')">Day 3</button>
+                    <button class="nav-btn" onclick="switchView('day4View')">Day 4</button>
+                    <button class="nav-btn" onclick="switchView('day5View')">Day 5</button>
+                </div>
+            </div>
+            <div class="timeline-container">
+                <div class="timeline-node" onclick="toggleDetail('d0_1')">
+                    <div class="node-header">
+                        <div><span class="node-time">06:00 PM</span><h3 class="node-title">台北車站集合</h3></div>
+                    </div>
+                    <div id="d0_1" class="detail-panel">
+                        <p>各自想辦法拖著行李抵達台北車站，集合後搭成機捷前往A14a機場旅館站</p>
+                        <img src="https://www.taiwanhot.net/wp-content/uploads/2017/01/587dc7cb11b14.jpg" alt="捷運地圖">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d0_2')">
+                    <div class="node-header">
+                        <div><span class="node-time">08:00 PM</span><h3 class="node-title">抵達機場飯店</h3></div>
+                    </div>
+                    <div id="d0_2" class="detail-panel">
+                        <p>入住凱悅酒店，確認隔天接駁車時間</p>
+                        <img src="https://www.hyattregencytaoyuan.tw/upload/room_list_pic_s/twL_room_24L24_9nqv8kjv4c.jpg" alt="飯店房間">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d0_3')">
+                    <div class="node-header">
+                        <div><span class="node-time">08:30 PM</span><h3 class="node-title">晚餐覓食</h3></div>
+                    </div>
+                    <div id="d0_3" class="detail-panel">
+                        <div class="detail-text">
+                            <p>可以附近便利商店或是去搭一站去桃園機場第二航廈覓食</p>
+                        </div>
+                        <div id="d0_3" class="image-gallery">   
+                            <img src="https://gstore.tw/wp-content/uploads/2025/04/%E9%9B%99%E6%9C%88-%E6%A1%83%E6%A9%9F-3.jpg" alt="雙月桃機店">
+                            <img src="https://cdn2.ettoday.net/images/7393/d7393549.jpg" alt="桃機美食">
+                        </div>
+                    </div>    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="day1View" class="page-view">
+        <header>
+            <h1>Day 1 詳細行程</h1>
+            <p>5月15日 (五) - 啟程與市區探索</p>
+        </header>
+        <div class="container">
+            <div class="day-nav">
+                <button class="nav-btn home-nav-btn" onclick="switchView('homeView')">🔙 返回首頁</button>
+                <div class="nav-group">
+                    <button class="nav-btn" onclick="switchView('day0View')">Day 0</button>
+                    <button class="nav-btn active" onclick="switchView('day1View')">Day 1</button>
+                    <button class="nav-btn" onclick="switchView('day2View')">Day 2</button>
+                    <button class="nav-btn" onclick="switchView('day3View')">Day 3</button>
+                    <button class="nav-btn" onclick="switchView('day4View')">Day 4</button>
+                    <button class="nav-btn" onclick="switchView('day5View')">Day 5</button>
+                </div>
+            </div>
+            <div class="timeline-container">
+                <div class="timeline-node" onclick="toggleDetail('d1_1')">
+                    <div class="node-header">
+                        <div><span class="node-time">7:00 AM</span><h3 class="node-title">前往桃園機場T2</h3></div>
+                    </div>
+                    <div id="d1_1" class="detail-panel">
+                        <p>搭乘接駁車前往桃機二航廈，辦理報到登機後可於貴賓室休息</p>
+                        <img src="https://www.funtime.com.tw/blog/wp-content/uploads/2024/01/03507120006s4vo57EBEE_Z_1000_0-700x350.png" alt="貴賓室">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d1_2')">
+                    <div class="node-header">
+                        <div><span class="node-time">10:05 AM</span><h3 class="node-title">起飛</h3></div>
+                    </div>
+                    <div id="d1_2" class="detail-panel">
+                        <p>搭乘日航NU302班機</p>
+                        <p>個人物品 1 件 + 手提行李 1 件 合計不超過10kg，三邊不超過115cm</p>
+                        <p>托運行李每人2件，每件23kg，三邊不超過203cm
+                        </p>
+                        <img src="https://storage.googleapis.com/stateless-newsmedia-today/2020/05/c145ff41-s__8331274-1024x567.jpg" alt="機場起飛">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d1_3')">
+                    <div class="node-header">
+                        <div><span class="node-time">12:40 PM(日本時間)</span><h3 class="node-title">出關入境日本</h3></div>
+                    </div>
+                    <div id="d1_3" class="detail-panel">
+                        <p>前往航廈二樓購買一日券(¥1000)，搭乘單軌電車前往 牧志駅</p>
+                        <p>*沖繩單軌電車可使用Apple pay或是IC 信用卡</p>
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/e0/Okinawa-Monorail_Series1000_Asahimachi.jpg" alt="單軌電車">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d1_4')">
+                    <div class="node-header">
+                        <div><span class="node-time">14:00 PM</span><h3 class="node-title">入住大和Roynet那霸國際通飯店</h3></div>
+                    </div>
+                    <div id="d1_4" class="detail-panel">
+                        <div class="detail-text">
+                            <p>從牧志駅二樓空橋走過去1分鐘即可抵達</p>
+                            <p>*飯店1樓有全家及CARGOES MALL，內有超市及許多零食宵夜(大部分店家為現金結帳)</p>
+                        </div>
+                        <div id="d1_4" class="image-gallery">
+                            <img src="https://www.daiwaroynet.jp/datas/cache/images/2020/12/14/491x491_ea1e9d427fb5664c32c517a73e421e58_5d37c9c4bc82371f9ca65460b0537281efe184ec.jpg" alt="飯店外觀">
+                            <img src="https://kimiyo.tw/wp-content/uploads/20250709191114_0_787133.jpg" alt="CARGOES MALL">
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d1_5')">
+                    <div class="node-header">
+                        <div><span class="node-time">15:00 PM</span><h3 class="node-title">首里城巡禮</h3></div>
+                    </div>
+                    <div id="d1_5" class="detail-panel">
+                        <div class="detail-text">
+                            <p>搭乘單軌電車前往 首里駅，參觀首里城(門票¥400)，營業時間至19:00 PM</p>
+                            <p>首里城作為琉球王國的王宮佔地寬廣，可出站後沿著上の毛ルート抵達奉神門(步行約6分鐘)，王宮內部為收費區域，外部則為免費區設有許多禮品店與餐廳</p>
+                            <p>*由於火災的關係，正殿還在整修，可以在外圍看到整修樣貌但不能入殿參觀</p>
+                        </div>
+                        <div id="d1_5" class="image-gallery">
+                            <img src="https://www.wowlavie.com/files/article/a1/16957/atl_m_190016957_805.jpg" alt="首里城1">
+                            <img src="https://www.smartmagazine.jp/okinawa/wp-content/uploads/2015/11/151030101622_img01__612.jpg" alt="首里城2">
+                        </div>
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d1_6')">
+                    <div class="node-header">
+                        <div><span class="node-time">18:00 PM</span><h3 class="node-title">夜遊屋台村</h3></div>
+                    </div>
+                    <div id="d1_6" class="detail-panel">
+                        <div class="detail-text">
+                            <p>返回飯店休息後可以前往國際通的屋台村，小型區域內約20間商家，主要提供串燒、壽司、沖繩麵、天婦羅等，也有一些蛇酒、義大利麵等特色料理</p>
+                            <p>門口有小地圖，而大部分的店家都有附圖片的外文菜單，蠻多人推薦編號11的串焼き 鷠，有鐵板阿古豬或是石垣牛壽司</p>
+                        </div>
+                        <div id="d1_6" class="image-gallery">
+                            <img src="https://i0.wp.com/boo2k.com/wp-content/uploads/2018/01/IMG_8129.jpg?resize=860%2C573&ssl=1" alt="屋台村1">
+                            <img src="https://pic.pimg.tw/traveler80s/1754745997-2533054165-g_l.jpg" alt="串燒">
+                            <img src="https://i0.wp.com/boo2k.com/wp-content/uploads/2018/01/IMG_8275-1.jpg?resize=860%2C573&ssl=1" alt="壽司">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="day2View" class="page-view">
+        <header>
+            <h1>Day 2 詳細行程</h1>
+            <p>5月16日 (六) - 北部景點一日旅</p>
+        </header>
+        <div class="container">
+            <div class="day-nav">
+                <button class="nav-btn home-nav-btn" onclick="switchView('homeView')">🔙 返回首頁</button>
+                <div class="nav-group">
+                    <button class="nav-btn" onclick="switchView('day0View')">Day 0</button>
+                    <button class="nav-btn" onclick="switchView('day1View')">Day 1</button>
+                    <button class="nav-btn active" onclick="switchView('day2View')">Day 2</button>
+                    <button class="nav-btn" onclick="switchView('day3View')">Day 3</button>
+                    <button class="nav-btn" onclick="switchView('day4View')">Day 4</button>
+                    <button class="nav-btn" onclick="switchView('day5View')">Day 5</button>
+                </div>
+            </div>
+            <div class="timeline-container">
+                <div class="timeline-node" onclick="toggleDetail('d2_1')">
+                    <div class="node-header">
+                        <div><span class="node-time">08:20 AM</span><h3 class="node-title">縣厅前駅集合</h3></div>
+                    </div>
+                    <div id="d2_1" class="detail-panel">
+                        <p>集合地點在車站前，BLUE SEAL久茂地店前面</p>
+                        <img src="https://lh3.googleusercontent.com/gps-cs-s/APNQkAEIG1CENkuHdDO448F3TqnxrSEJWi7bnhCn83oh5QWWsb4_Te89RkGLr8WqmsgIlOrq30yv8F2xubvlDooK0S2VPuDPKSyPs0jVMbAC62lbp3SPz2b9BywOkJo9vvYTmAQ29nea=w408-h272-k-no" alt="集合地點">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d2_2')">
+                    <div class="node-header">
+                        <div><span class="node-time">09:30 AM</span><h3 class="node-title">萬座毛</h3></div>
+                    </div>
+                    <div id="d2_2" class="detail-panel">
+                        <p>萬座毛意為可供萬人齊坐的草原，最經典的風景為長期海蝕形成的象鼻岩斷崖</p>
+                        <p>*停留30分鐘，附近有禮品店</p>
+                        <img src="https://s3-ap-northeast-1.amazonaws.com/thegate/2021/01/25/18/45/44/Manzamo.jpg" alt="萬座毛">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d2_3')">
+                    <div class="node-header">
+                        <div><span class="node-time">11:05 AM</span><h3 class="node-title">古宇利島</h3></div>
+                    </div>
+                    <div id="d2_3" class="detail-panel">
+                        <div class="detail-text">
+                            <p>位於沖繩北部的小島由古宇利大橋連接，以心之岩聞名，海洋塔裡有當地特色的南瓜包餡饅頭</p>
+                            <p>傳說琉球祖先一男一女生活於島上海底洞窟，靠著上天恩賜過活，後因貪得無厭被迫出海捕魚後繁殖了琉球人民。再加上心之岩的景觀，這邊也有 戀人島 或是 神之島 的別名</p>
+                            <p>*停留50分鐘</p>
+                        </div>
+                        <div id="d2_3" class="image-gallery">
+                            <img src="https://cdn.zekkei-japan.jp/images/articles/488e523c67776b1cf867452f7dc6008a.jpg" alt="古宇利大橋">
+                            <img src="https://res-2.cloudinary.com/jnto/image/upload/w_2064,h_1300,c_fill,f_auto,fl_lossy,q_auto/v1648203087/okinawa/M_01250_001" alt="心型岩">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d2_4')">
+                    <div class="node-header">
+                        <div><span class="node-time">12:30 PM</span><h3 class="node-title">美麗海水族館</h3></div>
+                    </div>
+                    <div id="d2_4" class="detail-panel">
+                        <div class="detail-text">
+                            <p>以珊瑚之海與黑潮之海聞名的水族館，有全球飼養時間最長的鯨鯊以及首創人工繁殖的魔鬼魟可供觀賞</p>
+                            <p>水族館共計1-4層，依序為深海魚、黑潮、珊瑚，以及頂樓可眺望大海的景觀平台</p>
+                            <p>*停留180分鐘，附沖繩炊飯午餐，海豚秀時間13:00/15:00</p>
+                        </div>
+                        <div id="d2_4" class="image-gallery">
+                            <img src="https://res.klook.com/images/fl_lossy.progressive,q_65/c_fill,w_1295,h_862/w_80,x_15,y_15,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/qb7m4vacsvuz5zoedkse/%E6%B2%96%E7%B9%A9%E7%BE%8E%E9%BA%97%E6%B5%B7%E6%B0%B4%E6%97%8F%E9%A4%A8%E9%96%80%E7%A5%A8.jpg" alt="鯨鯊">
+                            <img src="https://churaumi.okinawa/userfiles/images/area/surrounding/DSC02344.jpg" alt="海豚秀">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d2_5')">
+                    <div class="node-header">
+                        <div><span class="node-time">17:00 PM</span><h3 class="node-title">美國村</h3></div>
+                    </div>
+                    <div id="d2_5" class="detail-panel">
+                        <div class="detail-text">
+                            <p>原本為二站時期美軍基地，後來沖繩歸還日本後改建，模仿美國西海岸設有許多美式餐廳與潮流店，附近還是有現役的美軍空軍基地，可看到軍機起降</p>
+                            <p>美國村主要由購物中心，像是Depot Island、American Depot、Depot Central、AEON；以及海濱公園組成，像是北谷公園的日落海灘、安良波公園</p>
+                            <p>*停留60分鐘，如果吃晚餐可能會有點小趕，建議拍照+逛街然後外帶回去吃</p>
+                        </div>
+                        <div id="d2_5" class="image-gallery">
+                            <img src="https://suntravel.tw/wp-content/uploads/2024/10/%E5%9C%961.jpg" alt="美國村1">
+                            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgeHBZ1Cg2hAipfl3tpq036jqCXi3zyqA1GOB9j44fEjx1t4_Fc-FH68fW8n6oIQDyU28x41pXM_gDx63AIAnEOF_-MvGIrhfKVs9z5X02CcYMMoWQqu1HEfQnrp_mWnEtd1pCXQPtdB5fF632KHn7s4tDFtVHg-2WGwokHWQyI3GbTSnPUn1LdwRNldv7X/s1600-rw/Okinawa-American-Village-2.jpg" alt="美國村2">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d2_6')">
+                    <div class="node-header">
+                        <div><span class="node-time">19:00 PM</span><h3 class="node-title">返程</h3></div>
+                    </div>
+                    <div id="d2_6" class="detail-panel">
+                        <p>回到那霸縣厅前，可以搭單軌列車回飯店或是沿著國際通回去，下車地點附近有一間推薦的琉家拉麵，可以試試看~</p>
+                        <p>*一日券已過期須重新買票</p>
+                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTjjZe7ODXgGg69aziaNXbFQLEdFlFMwMlleg&s" alt="琉家拉麵">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="day3View" class="page-view">
+        <header>
+            <h1>Day 3 詳細行程</h1>
+            <p>5月17日 (日) - 那霸市區漫遊</p>
+        </header>
+        <div class="container">
+            <div class="day-nav">
+                <button class="nav-btn home-nav-btn" onclick="switchView('homeView')">🔙 返回首頁</button>
+                <div class="nav-group">
+                    <button class="nav-btn" onclick="switchView('day0View')">Day 0</button>
+                    <button class="nav-btn" onclick="switchView('day1View')">Day 1</button>
+                    <button class="nav-btn" onclick="switchView('day2View')">Day 2</button>
+                    <button class="nav-btn active" onclick="switchView('day3View')">Day 3</button>
+                    <button class="nav-btn" onclick="switchView('day4View')">Day 4</button>
+                    <button class="nav-btn" onclick="switchView('day5View')">Day 5</button>
+                </div>
+            </div>
+            <div class="timeline-container">
+                <div class="timeline-node" onclick="toggleDetail('d3_1')">
+                    <div class="node-header">
+                        <div><span class="node-time">08:30 AM</span><h3 class="node-title">飯店早餐</h3></div>
+                    </div>
+                    <div id="d3_1" class="detail-panel">
+                        <p>享用約50道菜餚的自助式早餐，主打使用沖繩特有食材烹調的料理</p>
+                        <p>*開放時間：上午6:30-10:00，最後入場9:30，一人¥1980</p>
+                        <img src="https://www.daiwaroynet.jp/datas/cache/images/2026/04/01/790x658_ea1e9d427fb5664c32c517a73e421e58_f3d3d9abcf4baa979bb3b102c552d85adf63637c.jpg" alt="飯店早餐">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d3_2')">
+                    <div class="node-header">
+                        <div><span class="node-time">09:50 AM</span><h3 class="node-title">搭乘TK02觀光巴士</h3></div>
+                    </div>
+                    <div id="d3_2" class="detail-panel">
+                        <div class="detail-text">
+                            <p>搭乘單軌電車前往縣厅前駅，在沖繩銀行對面搭乘TKO2東京巴士</p>
+                            <p>巴士可以用APPLE pay或是信用卡感應支付，也可以抽整理券，依據車資表給現金，車上備有換幣機</p>
+                            <p>*後門上車，前門下車，上下車都要刷卡感應</p>
+                        </div>
+                        <div id="d3_2" class="image-gallery">
+                            <img src="https://momoblog.tw/wp-content/uploads/DSCF2922-3.jpg" alt="TK02巴士站1">
+                            <img src="https://www.tokyobus.jp/okinawa/wp-content/themes/tokyobus-okinawa/img/payment/creca1.png" alt="刷卡機">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d3_3')">
+                    <div class="node-header">
+                        <div><span class="node-time">10:37 AM</span><h3 class="node-title">IIAS 沖繩豐崎購物中心</h3></div>
+                    </div>
+                    <div id="d3_3" class="detail-panel">
+                        <div class="detail-text">
+                            <p>IIAS是沖繩最新的商場，有UQ、GU、H&M等服飾品牌，也有貢茶、拉麵、豬排等美食，2樓的紀念品店有販售沖繩限定的透明御守</p>
+                            <p>3樓有LITTLE UNIVERSE，是沖繩的微型主題樂園，類似沖繩的小人國，還有古琉球王國的模型，門票一人¥2000</p>
+                            <p>*營業時間10:00-21:00，有接駁車往來ASHIBINAA Outlet</p>
+                        </div>
+                        <div id="d3_3" class="image-gallery">
+                            <img src="https://d1grca2t3zpuug.cloudfront.net/2025/04/iias03-870x500-1745214537.webp" alt="IIAS">
+                            <img src="https://lh7-rt.googleusercontent.com/docsz/AD_4nXcN7BaFwpe7-3bXGBlvPPBTSEDLgwN0aMANot5IrSOxac5TNVfx01-HHProhanGwOx4q__21yIsWUTvHFD9c9TgrZ-EXjnpng01PHgxLWSQeZqEV9FsxdJGe6c41hejodkRQa8gCq2o545mH71W8Q?key=YUGOXmeSVmUvoSczf_olUWGH" alt="LITTLE UNIVERSE">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d3_4')">
+                    <div class="node-header">
+                        <div><span class="node-time">12:30 PM</span><h3 class="node-title">DMM Kariyushi水族館</h3></div>
+                    </div>
+                    <div id="d3_4" class="detail-panel">
+                        <div class="detail-text">
+                            <p>位於IIAS商場的2樓，有許多動物可以互動，像是餵食水獺、迷你豬、企鵝、貓頭鷹等，門票¥2950</p>
+                            <p>*貓頭鷹攝影:09:00-18:00，每半小時一場，一次約10分鐘，體驗費¥1000</p>
+                            <p>*水獺餵食體驗:11:30、13:00，一次約5-10分鐘，體驗費¥1000</p>
+                            <p>*企鵝餵食體驗:10:30、14:30；企鵝攝影:12:30、13:30，一次約5-10分鐘，體驗費各¥1000</p>
+                            <p>*1樓有互動廣場 tetote，能和迷你豬與柯爾鴨互動，營業時間10:00-18:00，餵食一次¥500、合照一次¥1000</p>
+                        </div>
+                        <div id="d3_4" class="image-gallery">
+                            <img src="https://kariyushi-aquarium.com/uploads/1000_680_2.jpg" alt="貓頭鷹">
+                            <img src="https://kariyushi-aquarium.com/uploads/1000_680_6.jpg" alt="企鵝">
+                            <img src="https://kariyushi-aquarium.com/uploads/%E3%81%84%E3%81%8D%E3%82%82%E3%81%AE%E9%A4%8C%E3%82%84%E3%82%8A_%E3%83%9E%E3%82%A4%E3%82%AF%E3%83%AD%E3%83%95%E3%82%99%E3%82%BF%E3%81%AE%E9%A4%8C.png" alt="迷你豬">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d3_5')">
+                    <div class="node-header">
+                        <div><span class="node-time">14:30 PM</span><h3 class="node-title">ASHIBINAA Outlet</h3></div>
+                    </div>
+                    <div id="d3_5" class="detail-panel">
+                        <div class="detail-text">
+                            <p>ASHIBINAA是沖繩唯一一座也是最平價的Outlet，有GAP、NB、CK等各種精品品牌，也有沖繩特產店專門販售沖繩風格的手工藝品與伴手禮</p>
+                            <p>*營業時間10:00-20:00，從IIAS步行過來約10分鐘</p>
+                        </div>
+                        <div id="d3_5" class="image-gallery">
+                            <img src="https://d1grca2t3zpuug.cloudfront.net/2025/12/main-1200x799-1765282094.webp" alt="ASHIBINAA">
+                            <img src="https://mimigo.tw/wp-content/uploads/20180702212655_19.jpg" alt="Outlet">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d3_6')">
+                    <div class="node-header">
+                        <div><span class="node-time">16:03 PM</span><h3 class="node-title">前往瀬長島ホテル</h3></div>
+                    </div>
+                    <div id="d3_6" class="detail-panel">
+                        <p>搭乘TK02觀光巴士於瀬長島ホテル站下車，車程約12分鐘</p>
+                        <img src="https://mamahuhu.blog/wp-content/uploads/2026/01/iias-tk02-bus-stop.webp" alt="TK02巴士站2">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d3_7')">
+                    <div class="node-header">
+                        <div><span class="node-time">16:15 PM</span><h3 class="node-title">瀨長島</h3></div>
+                    </div>
+                    <div id="d3_7" class="detail-panel">
+                        <div class="detail-text">
+                            <p>瀨長島面積不大，島上約50家商販，最有名的是採用頂級食材的幸福鬆餅與必吃美食蝦蝦飯(昨天的古宇利島也有喔~)</p>
+                            <p>島上還有祈求子嗣的景點子寶岩，以及欣賞美景的日落公園及瀨長海灘，島上除了常規伴手禮外還有許多風獅爺的元素</p>
+                        </div>
+                        <div id="d3_7" class="image-gallery">
+                            <img src="https://www.resorts.co.jp/upload/tenant_1/c6b122e40ee645182fc6e84a3d0a37e2.jpeg" alt="瀨長島">
+                            <img src="https://cdn2.ettoday.net/images/6836/e6836281.jpg" alt="日落">
+                            <img src="https://wkitty.tw/wp-content/uploads/2018/05/1525687830-4a4809e99fbfe26f36f82bad0382e058.jpg" alt="幸福鬆餅">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d3_8')">
+                    <div class="node-header">
+                        <div><span class="node-time">18:58 PM</span><h3 class="node-title">返回縣厅前駅</h3></div>
+                    </div>
+                    <div id="d3_8" class="detail-panel">
+                        <p>搭乘TK02觀光巴士返回國際通入口，發車時間:18:58、19:28、20:01、20:31、21:01，車程約50分鐘</p>
+                        <img src="https://mamahuhu.blog/wp-content/uploads/2026/01/umikaji-terrace-bus-stop-1-1140x855.webp" alt="TK02巴士站3">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="day4View" class="page-view">
+        <header>
+            <h1>Day 4 詳細行程</h1>
+            <p>5月18日 (一) - 逛街買伴手禮</p>
+        </header>
+        <div class="container">
+            <div class="day-nav">
+                <button class="nav-btn home-nav-btn" onclick="switchView('homeView')">🔙 返回首頁</button>
+                <div class="nav-group">
+                    <button class="nav-btn" onclick="switchView('day0View')">Day 0</button>
+                    <button class="nav-btn" onclick="switchView('day1View')">Day 1</button>
+                    <button class="nav-btn" onclick="switchView('day2View')">Day 2</button>
+                    <button class="nav-btn" onclick="switchView('day3View')">Day 3</button>
+                    <button class="nav-btn active" onclick="switchView('day4View')">Day 4</button>
+                    <button class="nav-btn" onclick="switchView('day5View')">Day 5</button>
+                </div>
+            </div>
+            <div class="timeline-container">
+                <div class="timeline-node" onclick="toggleDetail('d4_1')">
+                    <div class="node-header">
+                        <div><span class="node-time">10:00 AM</span><h3 class="node-title">出發購物</h3></div>
+                    </div>
+                    <div id="d4_1" class="detail-panel">
+                        <p>從飯店步行前往牧志公園(到安里)站，搭乘385前往PARCO CITY，發車時間約10:06、11:56，車程約30分鐘</p>
+                        <p>也可以先搭單軌電車到おもろまち駅，站前有接駁車可以搭，發車時間10:52、11:38，車程約20分鐘，一次¥300</p>
+                        <p>*沖繩公車大部分僅收現金，車上也不一定有兌幣機</p>
+                        <img src="https://karrykanko.com/cms/wp-content/themes/karrykanko/assets/img/parco/picture.png" alt="接駁車車站">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d4_2')">
+                    <div class="node-header">
+                        <div><span class="node-time">11:10 AM</span><h3 class="node-title">PARCO CITY</h3></div>
+                    </div>
+                    <div id="d4_2" class="detail-panel">
+                        <div class="detail-text">
+                            <p>PARCO CITY是位於浦添西海岸、聚集了約250店家的百貨中心，除了常見的日系品牌UNIQLO、GU、MUJI外，也有許多藥妝、家電、保養品等</p>
+                            <p>最有名的就是「吉伊卡哇」沖繩限定專賣店，以象徵風獅爺的獅薩為代表。1樓還有全日本第二間的吉伊卡哇主題餐廳</p>
+                            <p>*非生鮮類的一般商品與消耗品，合計¥5000以上，可至1樓辦理"退稅TAX-REFUND"，若商家有公告TAX-FREE則直接於店內辦理"免稅"</p>
+                        </div>
+                        <div id="d4_2" class="image-gallery">
+                            <img src="https://d1grca2t3zpuug.cloudfront.net/2025/06/IMG_77482-1000x750-1749560139.webp" alt="GU">
+                            <img src="https://d1grca2t3zpuug.cloudfront.net/2025/01/6791e686f01d9-860x500.webp" alt="獅薩">
+                            <img src="https://pgw.udn.com.tw/gw/photo.php?u=https://uc.udn.com.tw/photo/2026/01/19/draft/34234089.jpg&x=0&y=0&sw=0&sh=0&sl=W&fw=800&exp=3600&w=800" alt="餐廳">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d4_3')">
+                    <div class="node-header">
+                        <div><span class="node-time">14:00 PM</span><h3 class="node-title">返回住處</h3></div>
+                    </div>
+                    <div id="d4_3" class="detail-panel">
+                        <p>可以搭乘385公車回到國際通，發車時間14:15、17:10，或是搭乘接駁車折返，發車時間15:10、16:20</p>
+                        <p>如果手上東西不多，也可以搭乘26、32、143、309、334、335公車回到縣厅前站，從國際通入口一路回飯店</p>
+                        <img src="https://www.parcocity.jp/tw-okinawa/assets/images/aftershopping/img_12.png" alt="接駁車車站">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d4_4')">
+                    <div class="node-header">
+                        <div><span class="node-time">15:30 PM</span><h3 class="node-title">國際通掃貨</h3></div>
+                    </div>
+                    <div id="d4_4" class="detail-panel">
+                        <div class="detail-text">
+                            <p>國際通總長約1.6公里，充滿了超過600間伴手禮、餐廳、服飾、雜貨等店</p>
+                            <p>必逛的店家像是Calbee+販售現炸薯條與沖繩限定紅芋口味，伴手禮名店沖繩屋、御菓子御殿，還有唐吉訶德</p>
+                            <p>必吃的像是Potama午餐肉玉子燒飯糰、阿古豬火鍋或燒肉、鹽屋的雪鹽霜淇淋</p>
+                        </div>
+                        <div id="d4_4" class="image-gallery">
+                            <img src="https://d1grca2t3zpuug.cloudfront.net/2024/10/dsc4444-870x506-1762391533.webp" alt="Calbee+">
+                            <img src="https://naha-kokusaidori.okinawa/wp-content/uploads/c4263c9e8b4781e8558ed1bfc2f7501c.jpg" alt="沖繩屋">
+                            <img src="https://static.gltjp.com/glt/data/directory/17000/16713/20250301_205918_23e83b44_w1920.webp" alt="potama">
+                            <img src="https://d29nw2uw1a8tt5.cloudfront.net/2019/10/okinawafood49-430x250.jpg " alt="雪鹽霜淇淋">
+                        </div>    
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="day5View" class="page-view">
+        <header>
+            <h1>Day 5 詳細行程</h1>
+            <p>5月19日 (二) - 告別沖繩海藍</p>
+        </header>
+        <div class="container">
+            <div class="day-nav">
+                <button class="nav-btn home-nav-btn" onclick="switchView('homeView')">🔙 返回首頁</button>
+                <div class="nav-group">
+                    <button class="nav-btn" onclick="switchView('day0View')">Day 0</button>
+                    <button class="nav-btn" onclick="switchView('day1View')">Day 1</button>
+                    <button class="nav-btn" onclick="switchView('day2View')">Day 2</button>
+                    <button class="nav-btn" onclick="switchView('day3View')">Day 3</button>
+                    <button class="nav-btn" onclick="switchView('day4View')">Day 4</button>
+                    <button class="nav-btn active" onclick="switchView('day5View')">Day 5</button>
+                </div>
+            </div>
+            <div class="timeline-container">
+                <div class="timeline-node" onclick="toggleDetail('d5_1')">
+                    <div class="node-header">
+                        <div><span class="node-time">10:00 AM</span><h3 class="node-title">飯店退宿</h3></div>
+                    </div>
+                    <div id="d5_1" class="detail-panel">
+                        <p>搭乘單軌電車前往那霸機場站，車程約20分鐘</p>
+                        <img src="https://d1grca2t3zpuug.cloudfront.net/2025/06/nahainfo06b-1000x581-1748951719.webp" alt="那霸機場單軌電車">
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d5_2')">
+                    <div class="node-header">
+                        <div><span class="node-time">13:15 PM</span><h3 class="node-title">那霸機場</h3></div>
+                    </div>
+                    <div id="d5_2" class="detail-panel">
+                        <div class="detail-text">
+                            <p>辦理登機後還有一段時間可以逛逛機場，有名的伴手禮像是鳳梨蛋糕、紅芋餅乾、雪鹽酥餅、黑糖餅乾棒等</p>
+                            <p>*目前日本退稅還是採用舊制(~2026.10.31)，由各店家負責，免稅品離境前不得拆封使用</p>
+                        </div>
+                        <div id="d5_2" class="image-gallery">
+                            <img src="https://article-image.travel.navitime.jp/img/NTJnews0097-zh-tw/oki1003_26.jpg" alt="鳳梨蛋糕">
+                            <img src="https://article-image.travel.navitime.jp/img/NTJnews0097-zh-tw/oki1003_2.webp" alt="紅芋餅乾">
+                            <img src="https://article-image.travel.navitime.jp/img/NTJnews0097-zh-tw/oki1003_24.webp" alt="雪鹽酥餅">
+                        </div>    
+                    </div>
+                </div>
+                <div class="timeline-node" onclick="toggleDetail('d5_3')">
+                    <div class="node-header">
+                        <div><span class="node-time">13:50 PM</span><h3 class="node-title">落地回台</h3></div>
+                    </div>
+                    <div id="d5_3" class="detail-panel">
+                        <p>回到台灣入境後約下午，先整理行李分享戰利品後，吃完晚餐回家</p>
+                        <img src="https://oa-profile-media.line-scdn.net/0hMkQRag8mEkRsKw2C3uptEzp0HDVfSUtAC0xfShVAFQo3WhNCNRgacCBMEg8eZ11CDz1cWRZLRB8zcFVzNToeXj92EyZCWhV6GykVSQJbECQkGhM/w720" alt="桃園機場">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2026 沖繩旅遊日誌 | 個人旅行紀錄版</p>
+    </footer>
+
+    <script>
+        // =========================================
+        // JavaScript 互動邏輯
+        // =========================================
+
+        // 功能 1：開場動畫自動淡出與移除
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splashScreen');
+                splash.classList.add('fade-out'); // 觸發 CSS 淡出
+                
+                setTimeout(() => {
+                    splash.remove();
+                }, 1000);
+            }, 2000); // 停留 3 秒
+        });
+
+        // 功能 2：單頁式視圖切換
+        function switchView(viewId) {
+            document.getElementById('homeView').style.display = 'none';
+            
+            const allViews = document.querySelectorAll('.page-view');
+            allViews.forEach(view => {
+                view.style.display = 'none';
+            });
+
+            document.getElementById(viewId).style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        // 功能 3：時間軸手風琴效果
+        function toggleDetail(detailId) {
+            const panel = document.getElementById(detailId);
+            
+            if (panel.style.display === "block") {
+                panel.style.display = "none";
+            } else {
+                const allPanels = document.querySelectorAll('.detail-panel');
+                allPanels.forEach(p => {
+                    p.style.display = 'none';
+                });
+                panel.style.display = "block";
+            }
+        }
+    </script>
+</body>
+</html>
